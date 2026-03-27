@@ -1,285 +1,408 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { useFFmpeg, Region } from "@/hooks/useFFmpeg";
+import Link from "next/link";
+import { useFFmpeg, Region, RemoveMode, QualitySettings, ProcessingStats } from "@/hooks/useFFmpeg";
 import RegionSelector from "@/components/RegionSelector";
+import { useLang } from "@/contexts/LangContext";
+import { Translations } from "@/lib/i18n";
 
-interface VideoInfo {
-  src: string;
-  file: File;
-  width: number;
-  height: number;
-}
-
+interface VideoInfo { src: string; file: File; width: number; height: number; }
 type Step = 1 | 2 | 3;
 
-const STEPS = [
-  { n: 1 as Step, label: "Subir video",    desc: "MP4, MOV, AVI, MKV, WebM" },
-  { n: 2 as Step, label: "Marcar región",  desc: "Dibuja sobre la marca de agua" },
-  { n: 3 as Step, label: "Descargar",      desc: "Video listo sin marca de agua" },
-];
+const MODE_IDS: RemoveMode[] = ["delogo", "blur", "pixelate"];
+const MODE_ICONS = ["✦", "◎", "▦"];
+const PRESET_IDS: QualitySettings["preset"][] = ["ultrafast", "fast", "medium", "slow"];
 
-function Sidebar({ step }: { step: Step }) {
+// ── Sidebar ───────────────────────────────────────────────────────────────────
+function Sidebar({ step, t }: { step: Step; t: Translations }) {
   return (
     <aside className="sidebar">
-      {/* Logo */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      <div className="logo">
         <div className="logo-mark">W</div>
-        <span style={{ fontWeight: 800, fontSize: 16, letterSpacing: "-0.03em", color: "#fff" }}>WaterCut</span>
+        <span className="logo-name">WaterCut</span>
       </div>
 
-      {/* Headline */}
       <div>
-        <p className="sidebar-title">
-          Elimina<br />marcas de<br />agua de<br /><span>tus videos.</span>
+        <p className="sidebar-tagline">
+          {t.sidebar.tagline1}<br />{t.sidebar.tagline2}<em>{t.sidebar.tagline3}</em>
         </p>
-        <p className="sidebar-desc" style={{ marginTop: 12 }}>
-          Procesado en tu navegador con FFmpeg.wasm. Sin servidores, sin límites.
-        </p>
+        <p className="sidebar-sub">{t.sidebar.sub}</p>
       </div>
 
-      {/* Steps */}
-      <div className="steps-v">
-        {STEPS.map((s) => {
-          const state = step > s.n ? "done" : step === s.n ? "active" : "idle";
+      <div className="steps">
+        {t.steps.map((s, idx) => {
+          const n = (idx + 1) as Step;
+          const state = step > n ? "done" : step === n ? "active" : "idle";
           return (
-            <div className="step-row" key={s.n}>
-              <div className={`step-num ${state}`}>
+            <div className="step" key={n}>
+              <div className={`step-dot ${state}`}>
                 {state === "done"
-                  ? <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6l2.5 2.5L10 3.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  : s.n}
+                  ? <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1.5 5l2 2L8.5 2.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  : n}
               </div>
-              <div className="step-info">
+              <div className="step-text">
                 <strong>{s.label}</strong>
-                <p>{s.desc}</p>
+                <span>{s.hint}</span>
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* Privacy */}
-      <div className="privacy-badge">
-        <strong>🔒 100% Privado</strong><br />
-        Tu video nunca sale de tu dispositivo. Todo ocurre en el navegador.
+      <div className="privacy-pill">
+        <strong>{t.sidebar.privacy}</strong><br />
+        {t.sidebar.privacyDesc}
       </div>
     </aside>
   );
 }
 
-export default function Home() {
-  const { load, loaded, loading, progress, removeWatermark } = useFFmpeg();
-  const [videoInfo, setVideoInfo] = useState<VideoInfo | null>(null);
-  const [regions, setRegions] = useState<Region[]>([]);
-  const [processing, setProcessing] = useState(false);
-  const [outputUrl, setOutputUrl] = useState<string | null>(null);
+// ── Landing ───────────────────────────────────────────────────────────────────
+function Landing({ onFile, t }: { onFile: (f: File) => void; t: Translations }) {
   const [dragging, setDragging] = useState(false);
-  const [drawMode, setDrawMode] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const pick = (file: File) => {
+    if (file.type.startsWith("video/")) onFile(file);
+  };
+
+  const toolHrefs = ["/", "/rotate", "/trim", "/mute"];
+
+  return (
+    <>
+      {/* Hero */}
+      <section className="hero fade-up">
+        <div className="hero-left">
+          <p className="hero-tag">{t.hero.tag}</p>
+          <h1 className="hero-h1">
+            {t.hero.h1a}<br /><em>{t.hero.h1b}</em><br />{t.hero.h1c}
+          </h1>
+          <p className="hero-p">{t.hero.p}</p>
+          <div className="hero-badges">
+            {t.hero.badges.map(b => (
+              <span className="badge" key={b}>{b}</span>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <div
+            className={`drop-zone ${dragging ? "over" : ""}`}
+            onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={(e) => { e.preventDefault(); setDragging(false); const f = e.dataTransfer.files[0]; if (f) pick(f); }}
+            onClick={() => inputRef.current?.click()}
+          >
+            <input ref={inputRef} type="file" accept="video/*" style={{ display: "none" }}
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) pick(f); }} />
+            <div className="drop-icon-wrap">🎬</div>
+            <p className="drop-title">{t.drop.title}</p>
+            <p className="drop-sub">{t.drop.sub}</p>
+            <div className="pills">
+              {["MP4", "MOV", "AVI", "MKV", "WebM"].map(f => <span key={f} className="pill">{f}</span>)}
+            </div>
+          </div>
+
+          <div className="features">
+            {t.features.map((f, i) => {
+              const icons = ["⚡", "🎯", "🔀"];
+              return (
+                <div className="feature" key={i}>
+                  <div className="feature-ico">{icons[i]}</div>
+                  <div><strong>{f.title}</strong><p>{f.desc}</p></div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section className="section">
+        <p className="section-label">{t.hiw.label}</p>
+        <h2 className="section-h2">{t.hiw.title}</h2>
+        <p className="section-sub">{t.hiw.sub}</p>
+        <div className="hiw">
+          {t.hiw.steps.map(s => (
+            <div className="hiw-step" key={s.n}>
+              <div className="hiw-n">{s.n}</div>
+              <div className="hiw-emoji">{s.icon}</div>
+              <h3>{s.title}</h3>
+              <p>{s.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Tools */}
+      <section className="section">
+        <p className="section-label">{t.tools.label}</p>
+        <h2 className="section-h2">{t.tools.title}</h2>
+        <p className="section-sub">{t.tools.sub}</p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, marginTop: 28 }}>
+          {t.tools.list.map((tool, i) => {
+            const icons = ["🎨", "🔄", "✂️", "🔇"];
+            return (
+              <Link key={toolHrefs[i]} href={toolHrefs[i]} style={{ textDecoration: "none" }}>
+                <div style={{
+                  padding: "20px", borderRadius: 14,
+                  background: tool.active ? "var(--black)" : "var(--white)",
+                  border: `1.5px solid ${tool.active ? "var(--black)" : "var(--border)"}`,
+                  cursor: "pointer", transition: "all 0.18s", height: "100%",
+                }}
+                  onMouseEnter={e => { if (!tool.active) { (e.currentTarget as HTMLDivElement).style.borderColor = "#999"; (e.currentTarget as HTMLDivElement).style.transform = "translateY(-2px)"; (e.currentTarget as HTMLDivElement).style.boxShadow = "0 8px 24px rgba(0,0,0,0.08)"; } }}
+                  onMouseLeave={e => { if (!tool.active) { (e.currentTarget as HTMLDivElement).style.borderColor = "var(--border)"; (e.currentTarget as HTMLDivElement).style.transform = "none"; (e.currentTarget as HTMLDivElement).style.boxShadow = "none"; } }}
+                >
+                  <div style={{ fontSize: 26, marginBottom: 10 }}>{icons[i]}</div>
+                  <p style={{ fontSize: 13, fontWeight: 800, color: tool.active ? "#fff" : "var(--ink)", marginBottom: 5 }}>{tool.title}</p>
+                  <p style={{ fontSize: 12, color: tool.active ? "rgba(255,255,255,0.5)" : "var(--muted)", lineHeight: 1.5 }}>{tool.desc}</p>
+                  {tool.active && <span style={{ display: "inline-block", marginTop: 10, fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 99, background: "var(--orange)", color: "#fff", letterSpacing: "0.05em" }}>ACTIVO</span>}
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section className="faq">
+        <p className="section-label">{t.faq.label}</p>
+        <h2 className="section-h2">{t.faq.title}</h2>
+        <div className="faq-grid">
+          {t.faq.items.map((item, i) => (
+            <details className="faq-item" key={i}>
+              <summary className="faq-q">
+                <span>{item.q}</span>
+                <span className="faq-arrow">›</span>
+              </summary>
+              <p className="faq-a">{item.a}</p>
+            </details>
+          ))}
+        </div>
+      </section>
+    </>
+  );
+}
+
+// ── Editor ────────────────────────────────────────────────────────────────────
+export default function Home() {
+  const { t, lang, setLang } = useLang();
+  const { load, loaded, loading, progress, removeWatermark } = useFFmpeg();
+
+  const [videoInfo,  setVideoInfo]  = useState<VideoInfo | null>(null);
+  const [regions,    setRegions]    = useState<Region[]>([]);
+  const [processing, setProcessing] = useState(false);
+  const [outputUrl,  setOutputUrl]  = useState<string | null>(null);
+  const [drawMode,   setDrawMode]   = useState(false);
+  const [mode,       setMode]       = useState<RemoveMode>("delogo");
+  const [quality,    setQuality]    = useState<QualitySettings>({ preset: "fast", crf: 23 });
+  const [stats,      setStats]      = useState<ProcessingStats | null>(null);
 
   const step: Step = !videoInfo ? 1 : !outputUrl ? 2 : 3;
 
+  // Build MODES and PRESETS from translation keys (IDs and icons are fixed)
+  const MODES: { id: RemoveMode; icon: string; label: string }[] = MODE_IDS.map((id, i) => ({
+    id,
+    icon: MODE_ICONS[i],
+    label: t.editor.modes[i]?.label ?? id,
+  }));
+
+  const PRESETS: { id: QualitySettings["preset"]; label: string }[] = PRESET_IDS.map((id, i) => ({
+    id,
+    label: t.editor.presets[i]?.label ?? id,
+  }));
+
   const loadVideo = useCallback((file: File) => {
-    if (!file.type.startsWith("video/")) return;
     const src = URL.createObjectURL(file);
     const v = document.createElement("video");
     v.src = src;
     v.onloadedmetadata = () => {
       setVideoInfo({ src, file, width: v.videoWidth, height: v.videoHeight });
-      setRegions([]);
-      setOutputUrl(null);
+      setRegions([]); setOutputUrl(null); setStats(null);
     };
   }, []);
-
-  const onDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragging(false);
-    const file = e.dataTransfer.files[0];
-    if (file) loadVideo(file);
-  };
 
   const handleProcess = async () => {
     if (!videoInfo || regions.length === 0) return;
     if (!loaded) await load();
-    setProcessing(true);
-    setOutputUrl(null);
+    setProcessing(true); setOutputUrl(null); setStats(null);
     try {
-      const blob = await removeWatermark(videoInfo.file, regions);
-      if (blob) setOutputUrl(URL.createObjectURL(blob));
-    } finally {
-      setProcessing(false);
-    }
+      const result = await removeWatermark(videoInfo.file, regions, mode, quality);
+      if (result) { setOutputUrl(URL.createObjectURL(result.blob)); setStats(result.stats); }
+    } finally { setProcessing(false); }
   };
 
-  const reset = () => { setVideoInfo(null); setRegions([]); setOutputUrl(null); setDrawMode(false); };
+  const reset = () => {
+    setVideoInfo(null); setRegions([]); setOutputUrl(null);
+    setDrawMode(false); setStats(null);
+  };
 
-  const outputFileName =
-    videoInfo?.file.name.replace(/(\.\w+)$/, "_sin_watermark$1") ?? "output.mp4";
+  const fmt = {
+    size: (b: number) => b >= 1048576 ? `${(b/1048576).toFixed(1)}MB` : `${(b/1024).toFixed(0)}KB`,
+    time: (ms: number) => ms >= 60000 ? `${Math.floor(ms/60000)}m${Math.round((ms%60000)/1000)}s` : `${(ms/1000).toFixed(1)}s`,
+  };
+
+  const breadcrumbLabel = step === 1
+    ? t.nav.home
+    : step === 2
+      ? (videoInfo?.file.name ?? "Editor")
+      : t.result.title;
 
   return (
     <div className="app-shell">
-      <Sidebar step={step} />
+      <Sidebar step={step} t={t} />
 
-      {/* ── Top bar ── */}
+      {/* Top bar */}
       <header className="top-bar">
         <div className="breadcrumb">
           <span>WaterCut</span>
           <span className="breadcrumb-sep">/</span>
-          <strong>
-            {step === 1 ? "Subir video" : step === 2 ? videoInfo?.file.name ?? "Editor" : "Resultado"}
-          </strong>
+          <strong>{breadcrumbLabel}</strong>
         </div>
+
+        <nav style={{ display: "flex", gap: 2, flex: 1, justifyContent: "center" }}>
+          {[
+            { href: "/rotate",  label: t.nav.rotate  },
+            { href: "/trim",    label: t.nav.trim     },
+            { href: "/mute",    label: t.nav.mute     },
+            { href: "/about",   label: t.nav.about    },
+            { href: "/privacy", label: t.nav.privacy  },
+            { href: "/contact", label: t.nav.contact  },
+          ].map(l => (
+            <Link key={l.href} href={l.href} style={{
+              padding: "5px 10px", borderRadius: 7,
+              fontSize: 12, fontWeight: 600, textDecoration: "none",
+              color: "var(--muted)", transition: "all 0.12s",
+            }}
+              onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.color = "var(--ink)"; (e.currentTarget as HTMLAnchorElement).style.background = "var(--bg)"; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.color = "var(--muted)"; (e.currentTarget as HTMLAnchorElement).style.background = "transparent"; }}
+            >{l.label}</Link>
+          ))}
+        </nav>
+
+        {/* Language switcher */}
+        <div style={{ display: "flex", gap: 2, background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 8, padding: 2, flexShrink: 0 }}>
+          {(["en", "es"] as const).map(l => (
+            <button key={l} onClick={() => setLang(l)} style={{
+              padding: "4px 10px", borderRadius: 6, border: "none",
+              fontSize: 11, fontWeight: 800, cursor: "pointer",
+              background: lang === l ? "var(--black)" : "transparent",
+              color: lang === l ? "#fff" : "var(--muted)",
+              letterSpacing: "0.04em", transition: "all 0.12s",
+            }}>{l.toUpperCase()}</button>
+          ))}
+        </div>
+
         <div className="status-chip">
           <div className="live-dot" />
-          Local · Sin uploads
+          {t.status}
         </div>
       </header>
 
-      {/* ── Main content ── */}
+      {/* Content */}
       <main className="content">
 
-        {/* ── PASO 1: UPLOAD ── */}
-        {!videoInfo && (
-          <section className="upload-hero fade-up">
-            <div>
-              <p className="hero-kicker">Herramienta gratuita</p>
-              <h1 className="hero-h1">
-                Quita cualquier<br /><em>marca de agua</em><br />en segundos.
-              </h1>
-              <p className="hero-sub">
-                Selecciona la zona exacta, FFmpeg borra el logo y descarga tu video limpio. Sin registro, sin costo.
-              </p>
-            </div>
+        {/* ── Step 1: Landing ── */}
+        {!videoInfo && <Landing onFile={loadVideo} t={t} />}
 
-            <div>
-              <div
-                className={`drop-card ${dragging ? "drag-over" : ""}`}
-                onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-                onDragLeave={() => setDragging(false)}
-                onDrop={onDrop}
-                onClick={() => inputRef.current?.click()}
-              >
-                <input
-                  ref={inputRef} type="file" accept="video/*"
-                  style={{ display: "none" }}
-                  onChange={(e) => { const f = e.target.files?.[0]; if (f) loadVideo(f); }}
-                />
-                <div className="drop-icon">🎬</div>
-                <p className="drop-title">Arrastra tu video aquí</p>
-                <p className="drop-sub">o haz clic para seleccionar un archivo</p>
-                <div className="format-pills">
-                  {["MP4", "MOV", "AVI", "MKV", "WebM"].map(f => <span key={f} className="pill">{f}</span>)}
-                </div>
-              </div>
-
-              <div className="feature-row">
-                {[
-                  { icon: "⚡", title: "Multi-thread", desc: "FFmpeg.wasm optimizado con Web Workers" },
-                  { icon: "🎯", title: "Pixel perfect", desc: "Dibuja la región exacta a eliminar" },
-                  { icon: "📁", title: "Sin límites", desc: "Cualquier tamaño, cualquier formato" },
-                ].map(f => (
-                  <div className="feature-card" key={f.title}>
-                    <div className="feature-icon">{f.icon}</div>
-                    <div><strong>{f.title}</strong><p>{f.desc}</p></div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* ── PASO 2 / 3: EDITOR + RESULTADO ── */}
+        {/* ── Steps 2 / 3: Editor ── */}
         {videoInfo && (
-          <div className="editor-layout fade-up">
-
-            {/* Panel unificado */}
+          <div className="editor fade-up">
             <div className="panel">
-              {/* ── Toolbar ── */}
-              <div className="panel-head" style={{ flexWrap: "wrap", gap: 8 }}>
-                {/* Izquierda: info archivo */}
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <div className="file-icon" style={{ width: 32, height: 32, fontSize: 14 }}>🎥</div>
+
+              {/* Toolbar */}
+              <div className="toolbar">
+                <div className="file-chip">
+                  <div className="file-chip-icon">🎥</div>
                   <div>
-                    <p className="file-name" style={{ fontSize: 12 }}>{videoInfo.file.name}</p>
-                    <p className="file-meta">{videoInfo.width}×{videoInfo.height}px · {(videoInfo.file.size / 1024 / 1024).toFixed(1)} MB</p>
+                    <div className="file-chip-name">{videoInfo.file.name}</div>
+                    <div className="file-chip-meta">{videoInfo.width}×{videoInfo.height} · {fmt.size(videoInfo.file.size)}</div>
                   </div>
                 </div>
 
-                {/* Centro: acciones */}
-                <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                  <button
-                    onClick={() => setDrawMode(false)}
-                    style={{
-                      padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600,
-                      border: "1.5px solid", cursor: "pointer", transition: "all 0.15s",
-                      borderColor: !drawMode ? "#0a0a0a" : "#ddd9d2",
-                      background: !drawMode ? "#0a0a0a" : "transparent",
-                      color: !drawMode ? "white" : "#9a9890",
-                    }}
-                  >▶ Reproducir</button>
+                <div className="divider" />
 
-                  <button
-                    onClick={() => setDrawMode(true)}
-                    style={{
-                      padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600,
-                      border: "1.5px solid", cursor: "pointer", transition: "all 0.15s",
-                      borderColor: drawMode ? "#ff4500" : "#ddd9d2",
-                      background: drawMode ? "#ff4500" : "transparent",
-                      color: drawMode ? "white" : "#9a9890",
-                    }}
-                  >✏ Marcar zona</button>
+                <button
+                  className={`toolbar-btn ${!drawMode ? "active-play" : ""}`}
+                  onClick={() => setDrawMode(false)}
+                >{t.editor.play}</button>
 
-                  {regions.length > 0 && (
-                    <button
-                      onClick={() => setRegions([])}
-                      style={{
-                        padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600,
-                        border: "1.5px solid #ddd9d2", cursor: "pointer",
-                        background: "transparent", color: "#9a9890", transition: "all 0.15s",
-                      }}
-                    >✕ Limpiar ({regions.length})</button>
-                  )}
+                <button
+                  className={`toolbar-btn ${drawMode ? "active-draw" : ""}`}
+                  onClick={() => setDrawMode(true)}
+                >{t.editor.draw}</button>
 
-                  <button
-                    style={{
-                      padding: "6px 16px", borderRadius: 8, fontSize: 12, fontWeight: 700,
-                      border: "none", cursor: processing || regions.length === 0 || loading ? "not-allowed" : "pointer",
-                      background: processing ? "#ff4500" : regions.length === 0 ? "#e5e3de" : "#0a0a0a",
-                      color: regions.length === 0 && !processing ? "#aaa" : "white",
-                      transition: "all 0.15s", opacity: loading ? 0.5 : 1,
-                    }}
-                    onClick={handleProcess}
-                    disabled={processing || regions.length === 0 || loading}
-                  >
-                    {loading ? "Cargando…" : processing ? `${progress}%` : "⚡ Eliminar marca"}
+                {regions.length > 0 && (
+                  <button className="toolbar-btn danger" onClick={() => setRegions([])}>
+                    {t.editor.clear} ({regions.length})
                   </button>
-                </div>
+                )}
 
-                {/* Derecha */}
-                <button className="btn-sm" onClick={reset}>↩ Cambiar</button>
+                <button
+                  className={`process-btn ml-auto ${processing ? "running" : ""}`}
+                  onClick={handleProcess}
+                  disabled={processing || regions.length === 0 || loading}
+                >
+                  {loading ? t.editor.loading : processing ? `⚡ ${progress}%` : t.editor.process}
+                </button>
+
+                <button className="btn-ghost" onClick={reset}>{t.editor.change}</button>
               </div>
 
-              {/* Hints */}
-              {(drawMode || (!loaded && !loading)) && (
-                <div style={{ padding: "8px 16px", borderBottom: "1px solid var(--border)", display: "flex", gap: 12, flexWrap: "wrap" }}>
-                  {drawMode && (
-                    <span style={{ fontSize: 12, color: "#ff4500" }}>💡 Pausa el video y arrastra para marcar la zona con marca de agua</span>
-                  )}
-                  {!loaded && !loading && (
-                    <span style={{ fontSize: 12, color: "#92400e" }}>⚠️ La primera vez se descarga FFmpeg (~30 MB)</span>
-                  )}
+              {/* Mode tabs */}
+              <div className="mode-bar">
+                <span className="mode-label">{t.editor.effect}</span>
+                <div className="mode-tabs">
+                  {MODES.map(m => (
+                    <button key={m.id} className={`mode-tab ${mode === m.id ? "active" : ""}`} onClick={() => setMode(m.id)}>
+                      {m.icon} {m.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Quality */}
+              <div className="quality-bar">
+                <div className="quality-group">
+                  <span className="quality-lbl">{t.editor.speed}</span>
+                  <div className="preset-tabs">
+                    {PRESETS.map(p => (
+                      <button key={p.id} className={`preset-tab ${quality.preset === p.id ? "active" : ""}`}
+                        onClick={() => setQuality(q => ({ ...q, preset: p.id }))}>
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="quality-group">
+                  <div className="crf-group">
+                    <span className="crf-lbl">{t.editor.quality}</span>
+                    <span className="crf-lbl">{t.editor.high}</span>
+                    <input type="range" min={18} max={28} step={1} value={quality.crf}
+                      className="crf" onChange={e => setQuality(q => ({ ...q, crf: +e.target.value }))} />
+                    <span className="crf-lbl">{t.editor.low}</span>
+                    <span className="crf-val">{quality.crf}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Hint */}
+              {drawMode && (
+                <div className="hint-bar">
+                  {t.editor.hint}
                 </div>
               )}
 
-              {/* Progress bar */}
+              {/* Progress */}
               {(processing || loading) && (
-                <div style={{ padding: "8px 16px", borderBottom: "1px solid var(--border)" }}>
-                  <div className="prog-label">
-                    <span>{loading ? "Descargando FFmpeg…" : "Procesando video…"}</span>
+                <div className="prog-bar">
+                  <div className="prog-row">
+                    <span>{loading ? t.editor.loadingFFmpeg : t.editor.processingVideo}</span>
                     <span>{loading ? "" : `${progress}%`}</span>
                   </div>
                   <div className="prog-track">
-                    <div className="prog-fill" style={{ width: loading ? "15%" : `${progress}%` }} />
+                    <div className="prog-fill" style={{ width: loading ? "10%" : `${progress}%` }} />
                   </div>
                 </div>
               )}
@@ -294,20 +417,15 @@ export default function Home() {
                 drawMode={drawMode}
               />
 
-              {/* Regiones marcadas */}
+              {/* Region chips */}
               {regions.length > 0 && (
-                <div style={{ padding: "12px 16px", borderTop: "1px solid var(--border)", display: "flex", flexWrap: "wrap", gap: 6 }}>
+                <div className="region-bar">
                   {regions.map((r, i) => (
-                    <div key={i} style={{
-                      display: "flex", alignItems: "center", gap: 6,
-                      padding: "5px 10px", borderRadius: 8,
-                      background: "#fff8f6", border: "1px solid rgba(255,69,0,0.15)",
-                    }}>
-                      <div style={{ width: 18, height: 18, borderRadius: 4, background: "#ff4500", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 800, color: "white" }}>{i + 1}</div>
-                      <span style={{ fontSize: 11, color: "#6b6b60", fontFamily: "monospace" }}>{r.width}×{r.height}px</span>
-                      <button
+                    <div key={i} className="region-chip">
+                      <div className="region-num">{i + 1}</div>
+                      <span className="region-size">{r.width}×{r.height}px</span>
+                      <button className="region-del"
                         onClick={() => setRegions(regions.filter((_, j) => j !== i))}
-                        style={{ background: "none", border: "none", cursor: "pointer", color: "#ccc", fontSize: 14, lineHeight: 1, padding: 0 }}
                         onMouseEnter={e => (e.currentTarget.style.color = "#ef4444")}
                         onMouseLeave={e => (e.currentTarget.style.color = "#ccc")}
                       >×</button>
@@ -317,29 +435,55 @@ export default function Home() {
               )}
             </div>
 
-            {/* Resultado */}
+            {/* ── Result ── */}
             {outputUrl && (
-              <div className="panel fade-up" style={{ border: "1.5px solid #86efac" }}>
-                <div className="panel-head" style={{ background: "#f0fdf4" }}>
-                  <div className="result-header" style={{ margin: 0 }}>
-                    <h2 style={{ color: "#166534" }}>Resultado</h2>
-                    <span className="result-badge">✓ LISTO</span>
+              <div className="panel result-panel fade-up">
+                <div className="result-head">
+                  <div className="result-title">
+                    {t.result.title} <span className="result-badge">{t.result.ready}</span>
                   </div>
-                  <button className="btn-sm" onClick={reset}>Nuevo video</button>
+                  <button className="btn-ghost" onClick={reset}>{t.result.newVideo}</button>
                 </div>
-                <div style={{ background: "#111", display: "flex", alignItems: "center", justifyContent: "center", padding: "16px 0" }}>
-                  <video
-                    src={outputUrl}
-                    controls
-                    style={{ maxHeight: 420, maxWidth: "100%", borderRadius: 8, display: "block", objectFit: "contain" }}
-                  />
+
+                {stats && (
+                  <div className="stats-row">
+                    <div className="stat">
+                      <div className="stat-label">{t.result.stats.time}</div>
+                      <div className="stat-val">{fmt.time(stats.durationMs)}</div>
+                    </div>
+                    <div className="stat">
+                      <div className="stat-label">{t.result.stats.original}</div>
+                      <div className="stat-val">{fmt.size(stats.inputSize)}</div>
+                    </div>
+                    <div className="stat">
+                      <div className="stat-label">{t.result.stats.result}</div>
+                      <div className="stat-val">{fmt.size(stats.outputSize)}</div>
+                    </div>
+                    <div className="stat">
+                      <div className="stat-label">{t.result.stats.reduction}</div>
+                      <div className={`stat-val ${stats.outputSize < stats.inputSize ? "pos" : "neg"}`}>
+                        {stats.outputSize < stats.inputSize
+                          ? `-${((1 - stats.outputSize / stats.inputSize) * 100).toFixed(1)}%`
+                          : `+${((stats.outputSize / stats.inputSize - 1) * 100).toFixed(1)}%`}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="result-video">
+                  <video src={outputUrl} controls />
                 </div>
-                <div className="panel-body">
-                  <a href={outputUrl} download={outputFileName} className="btn-download">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                      <path d="M8 2v8m0 0L5 7m3 3l3-3M2 13h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+
+                <div className="result-foot">
+                  <a
+                    href={outputUrl}
+                    download={videoInfo.file.name.replace(/(\.\w+)$/, "_sin_watermark$1")}
+                    className="btn-download"
+                  >
+                    <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+                      <path d="M7.5 2v7m0 0L5 6.5m2.5 2.5L10 6.5M2 12.5h11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
-                    Descargar video sin marca de agua
+                    {t.result.download}
                   </a>
                 </div>
               </div>
@@ -348,10 +492,18 @@ export default function Home() {
         )}
       </main>
 
-      {/* ── Footer ── */}
       <footer className="foot">
-        <span>WaterCut © 2025</span>
-        <span>FFmpeg.wasm · Sin servidores · Sin límites</span>
+        <span>{t.footer.copy}</span>
+        <div style={{ display: "flex", gap: 16 }}>
+          {[
+            { href: "/about",   label: t.nav.about   },
+            { href: "/privacy", label: t.nav.privacy  },
+            { href: "/contact", label: t.nav.contact  },
+          ].map(l => (
+            <Link key={l.href} href={l.href} style={{ color: "var(--muted)", textDecoration: "none", fontSize: 11 }}>{l.label}</Link>
+          ))}
+        </div>
+        <span style={{ fontSize: 11 }}>{t.footer.tech}</span>
       </footer>
     </div>
   );
