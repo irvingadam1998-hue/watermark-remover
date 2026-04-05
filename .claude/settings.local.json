@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git remote:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(npm install:*)",
+      "Bash(mkdir -p \"C:/Users/Irvin/Documents/watermark-remover/public/ffmpeg\")",
+      "Bash(cp \"C:/Users/Irvin/Documents/watermark-remover/node_modules/@ffmpeg/core-mt/dist/umd/ffmpeg-core.js\" \"C:/Users/Irvin/Documents/watermark-remover/public/ffmpeg/\")",
+      "Bash(cp \"C:/Users/Irvin/Documents/watermark-remover/node_modules/@ffmpeg/core-mt/dist/umd/ffmpeg-core.wasm\" \"C:/Users/Irvin/Documents/watermark-remover/public/ffmpeg/\")",
+      "Bash(cp \"C:/Users/Irvin/Documents/watermark-remover/node_modules/@ffmpeg/core-mt/dist/umd/ffmpeg-core.worker.js\" \"C:/Users/Irvin/Documents/watermark-remover/public/ffmpeg/\")"
+    ]
+  }
+}
