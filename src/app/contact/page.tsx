@@ -24,7 +24,7 @@ export default function Contact() {
                 <p style={{ fontSize: 14, fontWeight: 800, color: "var(--ink)", marginBottom: 3 }}>{opt.title}</p>
                 <p style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>{opt.desc}</p>
               </div>
-              <a href={`mailto:soporte@watercut.app${opt.subject ? `?subject=${opt.subject}` : ""}`} style={{ padding: "8px 16px", borderRadius: 8, background: "var(--black)", color: "#fff", fontSize: 12, fontWeight: 700, textDecoration: "none", flexShrink: 0 }}>
+              <a href={`mailto:soporte@Unmarkify.app${opt.subject ? `?subject=${opt.subject}` : ""}`} style={{ padding: "8px 16px", borderRadius: 8, background: "var(--black)", color: "#fff", fontSize: 12, fontWeight: 700, textDecoration: "none", flexShrink: 0 }}>
                 {opt.label}
               </a>
             </div>

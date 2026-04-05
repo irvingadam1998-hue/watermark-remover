@@ -16,11 +16,11 @@ export default function PageShell({ children, active }: { children: React.ReactN
   }, [menuOpen]);
 
   const navLinks = [
-    { href: "/",        label: t.nav.home    },
-    { href: "/rotate",  label: t.nav.rotate  },
-    { href: "/trim",    label: t.nav.trim    },
-    { href: "/mute",    label: t.nav.mute    },
-    { href: "/about",   label: t.nav.about   },
+    { href: "/", label: t.nav.home },
+    { href: "/rotate", label: t.nav.rotate },
+    { href: "/trim", label: t.nav.trim },
+    { href: "/mute", label: t.nav.mute },
+    { href: "/about", label: t.nav.about },
     { href: "/privacy", label: t.nav.privacy },
     { href: "/contact", label: t.nav.contact },
   ];
@@ -47,8 +47,8 @@ export default function PageShell({ children, active }: { children: React.ReactN
             width: 30, height: 30, borderRadius: 8, background: "var(--orange)",
             display: "flex", alignItems: "center", justifyContent: "center",
             fontSize: 15, fontWeight: 900, color: "#fff",
-          }}>W</div>
-          <span style={{ fontSize: 14, fontWeight: 800, color: "var(--ink)", letterSpacing: "-0.02em" }}>WaterCut</span>
+          }}>U</div>
+          <span style={{ fontSize: 14, fontWeight: 800, color: "var(--ink)", letterSpacing: "-0.02em" }}>Unmarkify</span>
         </Link>
 
         {/* Desktop nav — hidden below 768px */}
@@ -130,7 +130,7 @@ export default function PageShell({ children, active }: { children: React.ReactN
       }}>
         <span>{t.footer.copy}</span>
         <div style={{ display: "flex", gap: 16 }}>
-          {[{href:"/about",label:t.nav.about},{href:"/privacy",label:t.nav.privacy},{href:"/contact",label:t.nav.contact}].map(l => (
+          {[{ href: "/about", label: t.nav.about }, { href: "/privacy", label: t.nav.privacy }, { href: "/contact", label: t.nav.contact }].map(l => (
             <Link key={l.href} href={l.href} style={{ color: "var(--muted)", textDecoration: "none" }}>{l.label}</Link>
           ))}
         </div>

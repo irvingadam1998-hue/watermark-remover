@@ -19,8 +19,8 @@ function Sidebar({ step, t }: { step: Step; t: Translations }) {
   return (
     <aside className="sidebar">
       <div className="logo">
-        <div className="logo-mark">W</div>
-        <span className="logo-name">WaterCut</span>
+        <div className="logo-mark">U</div>
+        <span className="logo-name">Unmarkify</span>
       </div>
 
       <div>
@@ -38,7 +38,7 @@ function Sidebar({ step, t }: { step: Step; t: Translations }) {
             <div className="step" key={n}>
               <div className={`step-dot ${state}`}>
                 {state === "done"
-                  ? <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1.5 5l2 2L8.5 2.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  ? <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1.5 5l2 2L8.5 2.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
                   : n}
               </div>
               <div className="step-text">
@@ -190,14 +190,14 @@ export default function Home() {
   const { t, lang, setLang } = useLang();
   const { load, loaded, loading, progress, removeWatermark } = useFFmpeg();
 
-  const [videoInfo,  setVideoInfo]  = useState<VideoInfo | null>(null);
-  const [regions,    setRegions]    = useState<Region[]>([]);
+  const [videoInfo, setVideoInfo] = useState<VideoInfo | null>(null);
+  const [regions, setRegions] = useState<Region[]>([]);
   const [processing, setProcessing] = useState(false);
-  const [outputUrl,  setOutputUrl]  = useState<string | null>(null);
-  const [drawMode,   setDrawMode]   = useState(false);
-  const [mode,       setMode]       = useState<RemoveMode>("delogo");
-  const [quality,    setQuality]    = useState<QualitySettings>({ preset: "fast", crf: 23 });
-  const [stats,      setStats]      = useState<ProcessingStats | null>(null);
+  const [outputUrl, setOutputUrl] = useState<string | null>(null);
+  const [drawMode, setDrawMode] = useState(false);
+  const [mode, setMode] = useState<RemoveMode>("delogo");
+  const [quality, setQuality] = useState<QualitySettings>({ preset: "fast", crf: 23 });
+  const [stats, setStats] = useState<ProcessingStats | null>(null);
 
   const step: Step = !videoInfo ? 1 : !outputUrl ? 2 : 3;
   const [menuOpen, setMenuOpen] = useState(false);
@@ -248,8 +248,8 @@ export default function Home() {
   };
 
   const fmt = {
-    size: (b: number) => b >= 1048576 ? `${(b/1048576).toFixed(1)}MB` : `${(b/1024).toFixed(0)}KB`,
-    time: (ms: number) => ms >= 60000 ? `${Math.floor(ms/60000)}m${Math.round((ms%60000)/1000)}s` : `${(ms/1000).toFixed(1)}s`,
+    size: (b: number) => b >= 1048576 ? `${(b / 1048576).toFixed(1)}MB` : `${(b / 1024).toFixed(0)}KB`,
+    time: (ms: number) => ms >= 60000 ? `${Math.floor(ms / 60000)}m${Math.round((ms % 60000) / 1000)}s` : `${(ms / 1000).toFixed(1)}s`,
   };
 
   const breadcrumbLabel = step === 1
@@ -265,19 +265,19 @@ export default function Home() {
       {/* Top bar */}
       <header className="top-bar">
         <div className="breadcrumb">
-          <span>WaterCut</span>
+          <span>Unmarkify</span>
           <span className="breadcrumb-sep">/</span>
           <strong>{breadcrumbLabel}</strong>
         </div>
 
         <nav style={{ display: "flex", gap: 2, flex: 1, justifyContent: "center" }}>
           {[
-            { href: "/rotate",  label: t.nav.rotate  },
-            { href: "/trim",    label: t.nav.trim     },
-            { href: "/mute",    label: t.nav.mute     },
-            { href: "/about",   label: t.nav.about    },
-            { href: "/privacy", label: t.nav.privacy  },
-            { href: "/contact", label: t.nav.contact  },
+            { href: "/rotate", label: t.nav.rotate },
+            { href: "/trim", label: t.nav.trim },
+            { href: "/mute", label: t.nav.mute },
+            { href: "/about", label: t.nav.about },
+            { href: "/privacy", label: t.nav.privacy },
+            { href: "/contact", label: t.nav.contact },
           ].map(l => (
             <Link key={l.href} href={l.href} style={{
               padding: "5px 10px", borderRadius: 7,
@@ -320,15 +320,15 @@ export default function Home() {
         {/* Mobile nav drawer */}
         <div className={`mobile-nav ${menuOpen ? "open" : ""}`} onClick={e => e.stopPropagation()}>
           {[
-            { href: "/rotate",  label: t.nav.rotate  },
-            { href: "/trim",    label: t.nav.trim     },
-            { href: "/mute",    label: t.nav.mute     },
+            { href: "/rotate", label: t.nav.rotate },
+            { href: "/trim", label: t.nav.trim },
+            { href: "/mute", label: t.nav.mute },
           ].map(l => <Link key={l.href} href={l.href} onClick={() => setMenuOpen(false)}>{l.label}</Link>)}
           <div className="nav-divider" />
           {[
-            { href: "/about",   label: t.nav.about   },
-            { href: "/privacy", label: t.nav.privacy  },
-            { href: "/contact", label: t.nav.contact  },
+            { href: "/about", label: t.nav.about },
+            { href: "/privacy", label: t.nav.privacy },
+            { href: "/contact", label: t.nav.contact },
           ].map(l => <Link key={l.href} href={l.href} onClick={() => setMenuOpen(false)}>{l.label}</Link>)}
           <div className="nav-divider" />
           <div style={{ display: "flex", gap: 6, padding: "6px 12px" }}>
@@ -525,7 +525,7 @@ export default function Home() {
                     className="btn-download"
                   >
                     <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
-                      <path d="M7.5 2v7m0 0L5 6.5m2.5 2.5L10 6.5M2 12.5h11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M7.5 2v7m0 0L5 6.5m2.5 2.5L10 6.5M2 12.5h11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                     {t.result.download}
                   </a>
@@ -540,9 +540,9 @@ export default function Home() {
         <span>{t.footer.copy}</span>
         <div style={{ display: "flex", gap: 16 }}>
           {[
-            { href: "/about",   label: t.nav.about   },
-            { href: "/privacy", label: t.nav.privacy  },
-            { href: "/contact", label: t.nav.contact  },
+            { href: "/about", label: t.nav.about },
+            { href: "/privacy", label: t.nav.privacy },
+            { href: "/contact", label: t.nav.contact },
           ].map(l => (
             <Link key={l.href} href={l.href} style={{ color: "var(--muted)", textDecoration: "none", fontSize: 11 }}>{l.label}</Link>
           ))}

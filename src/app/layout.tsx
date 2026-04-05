@@ -3,7 +3,7 @@ import "./globals.css";
 import { LangProvider } from "@/contexts/LangContext";
 
 export const metadata: Metadata = {
-  title: "WaterCut – Remove Watermarks from Videos",
+  title: "Unmarkify – Remove Watermarks from Videos",
   description: "Remove, blur or pixelate watermarks from videos in your browser. No uploads, no servers, 100% private.",
 };
 
